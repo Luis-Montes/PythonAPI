@@ -17,7 +17,7 @@ def read_root():
     return {"Hello": "World"}
 
 @app.get("/authors")
-async def get_authors():
+def get_authors():
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -27,4 +27,19 @@ async def get_authors():
         conn.close()
         return authors
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/authors")
+def create_author(item: Item):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute('INSERT INTO "Libreria".authors (id, name, address, email) VALUES (%s, %s, %s, %s) RETURNING id;',
+                    (item.id_author, item.name_author, item.address, item.email_author))
+        new_id = cur.fetchone()['id']
+        cur.close()
+        conn.commit()
+        conn.close()
+        return {"id": new_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
