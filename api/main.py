@@ -4,8 +4,8 @@ from db import get_db_connection
 from psycopg2.extras import RealDictCursor
 
 class Item(BaseModel):
-    id_author: int
     name_author: str
+    lastname_author: str
     address: str
     email_author: str
 
@@ -29,17 +29,34 @@ def get_authors():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/authors/{id_author}")
+def get_author(id_author: int):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute('SELECT * FROM "Libreria".authors WHERE id_author = %s', (id_author,))
+        author = cur.fetchone()
+        cur.close()
+        conn.close()
+        if author:
+            return author
+        else:
+            raise HTTPException(status_code=404, detail="Error al encontrar el autor")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al obtener el autor: {e}")
+
 @app.post("/authors")
 def create_author(item: Item):
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute('INSERT INTO "Libreria".authors (id, name, address, email) VALUES (%s, %s, %s, %s) RETURNING id;',
-                    (item.id_author, item.name_author, item.address, item.email_author))
-        new_id = cur.fetchone()['id']
+        cur.execute('INSERT INTO "Libreria".authors (name_author, lastname_author, address, email_author) VALUES (%s, %s, %s, %s) RETURNING id_author;',
+                    (item.name_author, item.lastname_author, item.address, item.email_author))
+        new_id = cur.fetchone()['id_author']
+        print(f"Nuevo autor creado con ID: {new_id}")
         cur.close()
         conn.commit()
         conn.close()
-        return {"id": new_id}
+        return {"id_author": new_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

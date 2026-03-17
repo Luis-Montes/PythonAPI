@@ -22,19 +22,3 @@ def get_db_connection():
     except Exception as e:
         print(f"Error conectando a la base de datos: {e}")
         return None
-
-@app.get("/authors/{id_author}")
-def get_author(id_author: int):
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM authors WHERE id = %s", (id_author,))
-        author = cur.fetchone()
-        cur.close()
-        conn.close()
-        if author:
-            return author
-        else:
-            raise HTTPException(status_code=404, detail="Error al encontrar el autor")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al obtener el autor: {e}")
