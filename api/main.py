@@ -16,12 +16,14 @@ app = FastAPI()
 def read_root():
     return {"Hello": "World"}
 
+# Rutas para autores
+
 @app.get("/authors")
 def get_authors():
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute('SELECT * FROM "Libreria".authors;')
+        cur.execute('SELECT name_author, lastname_author, address, email_author FROM "Libreria".authors;')
         authors = cur.fetchall()
         cur.close()
         conn.close()
@@ -58,5 +60,29 @@ def create_author(item: Item):
         conn.commit()
         conn.close()
         return {"id_author": new_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Rutas para libros
+
+@app.get("/books")
+def books():
+    try:
+        conn = get_db_connection()
+        cur = conn .cursor(cursor_factory=RealDictCursor)
+        query = """
+        SELECT 
+            name_book, 
+            description_book, 
+            price_book, 
+            name_author || ' ' || lastname_author AS full_name
+        FROM "Libreria".books 
+        LEFT JOIN "Libreria".authors ON "Libreria".books.id_author = "Libreria".authors.id_author;
+"""
+        cur.execute(query)
+        books = cur.fetchall()
+        cur.close()
+        conn.close()
+        return books
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
