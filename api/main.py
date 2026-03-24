@@ -16,7 +16,11 @@ class ItemBook(BaseModel):
     description_book: str
     price_book: float
     id_author: int
-    stocks: int
+    stock: int
+
+class UpdateBook(BaseModel):
+    price_book: float
+    stock: int
 
 
 app = FastAPI()
@@ -85,7 +89,7 @@ def books():
             description_book, 
             price_book, 
             name_author || ' ' || lastname_author AS full_name,
-            stocks
+            stock
         FROM "Libreria".books 
         LEFT JOIN "Libreria".authors ON "Libreria".books.id_author = "Libreria".authors.id_author;
 """
@@ -102,8 +106,8 @@ def create_book(ItemBook: ItemBook):
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute('INSERT INTO "Libreria".books (name_book, description_book, price_book, id_author, stocks) VALUES (%s, %s, %s, %s, %s) RETURNING id_book;',
-                    (ItemBook.name_book, ItemBook.description_book, ItemBook.price_book, ItemBook.id_author, ItemBook.stocks))
+        cur.execute('INSERT INTO "Libreria".books (name_book, description_book, price_book, id_author, stock) VALUES (%s, %s, %s, %s, %s) RETURNING id_book;',
+                    (ItemBook.name_book, ItemBook.description_book, ItemBook.price_book, ItemBook.id_author, ItemBook.stock))
         new_id = cur.fetchone()['id_book']
         print(f"Nuevo libro creado con ID: {new_id}")
         cur.close()
@@ -113,28 +117,31 @@ def create_book(ItemBook: ItemBook):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# @app.put("/books/{id_book}")
-# def update_book(id_book: int, ItemBook: ItemBook):
-#     try:
-#         conn = get_db_connection()
-#         cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+@app.put("/books/{id_book}")
+def update_book(id_book: int, UpdateBook: UpdateBook):
+    try: 
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute(
+            'UPDATE "Libreria".books SET price_book = %s, stock = %s WHERE id_book = %s RETURNING id_book;',
+            (UpdateBook.price_book, UpdateBook.stock, id_book)
+        )
+        result = cur.fetchone()
 
-#         cur.execute(
-#             'UPDATE "Libreria".books SET price_book = %s, stocks = %s WHERE id_book = %s RETURNING id_book;',
-#             (ItemBook.price_book, ItemBook.stocks, id_book)
-#         )
+        if not result:
+            raise HTTPException(status_code=404, detail="Libro no encontrado")
 
-#         result = cur.fetchone()
-#         if not result:
-#             raise HTTPException(status_code=404, detail="Libro no encontrado")
+        conn.commit()
+        cur.close()
+        conn.close()
 
-#         conn.commit()
-#         return {"id_book": result['id_book']}
+        print(f"Libro actualizado con ID: {result['id_book']}")
+        return {"message": "Libro actualizado", "id_book": result["id_book"]}
 
-#     except Exception as e:
-#         conn.rollback()
-#         raise HTTPException(status_code=500, detail=str(e))
-
-#     finally:
-#         cur.close()
-#         conn.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback() 
+        raise HTTPException(status_code=500, detail=str(e))
+    
